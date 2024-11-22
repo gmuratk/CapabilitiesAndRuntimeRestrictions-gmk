@@ -7,7 +7,7 @@
 <a href="https://github.com/camaraproject/CapabilitiesAndRuntimeRestrictions/releases/latest" title="Latest Release"><img src="https://img.shields.io/github/release/camaraproject/CapabilitiesAndRuntimeRestrictions?style=plastic"></a>
 
 # CapabilitiesAndRuntimeRestrictions
-Sandbox Repository to describe, develop, document, and test the Capabilities And Runtime Restrictions API(s)  of CAMARA.
+Sandbox Repository to describe, develop, document, and test the Capabilities And Runtime Restrictions API(s).
 
 ## Scope
 
