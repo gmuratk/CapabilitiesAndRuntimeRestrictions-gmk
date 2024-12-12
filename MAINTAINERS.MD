@@ -1,3 +1,4 @@
 | Org                    | Name                                      | GitHub Username        |
 | -----------------------| ------------------------------------------| -----------------------|
-| §company§ | §name§ | §github_username§ |
+| T-Mobile US | Murat Karabulut | gmuratk  |
+| T-Mobile US | Lyle Bertz | lbertz02 |
