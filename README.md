@@ -13,7 +13,9 @@ Sandbox Repository to describe, develop, document, and test the Capabilities And
 
 * Service APIs for “CapabilitiesAndRuntimeRestrictions” (see APIBacklog.md) 
 * The API provides the customer with the ability to:  
-  * §Short API scope description§ <!--- to be replaced --->
+  * Supplementary set of APIs for CAMARA Service APIs
+  * Enables API Provider to offer improved application experience by proactively communicating the changes in provided network capabilities
+  * Allows for API Client to verify and adjust, as necessary, the Service API call to avoid receiving error due to changing network conditions.
 * Describe, develop, document, and test the APIs
 * Started: November 2024
 
