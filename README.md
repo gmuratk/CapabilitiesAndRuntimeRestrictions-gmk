@@ -11,11 +11,12 @@ Sandbox Repository to describe, develop, document, and test the Capabilities And
 
 ## Scope
 
-* Service APIs for “CapabilitiesAndRuntimeRestrictions” (see APIBacklog.md) 
+* Service APIs for “CapabilitiesAndRuntimeRestrictions” (see APIBacklog.md)
+* The CAMARA Runtime Restrictions API allows developers to understand and adapt to environment-specific differences in how CAMARA APIs are implemented. It provides details on what is supported, what is temporarily unavailable, and any other limitations that might affect how you call and consume those APIs.  This API provides that information about other CAMARA APIs.
 * The API provides the customer with the ability to:  
-  * Supplementary set of APIs for CAMARA Service APIs
-  * Enables API Provider to offer improved application experience by proactively communicating the changes in provided network capabilities
-  * Allows for API Client to verify and adjust, as necessary, the Service API call to avoid receiving error due to changing network conditions.
+  * Discover Capabilities and Constraints
+  * Stay updated on changes
+  * Adapt your requests Automatically
 * Describe, develop, document, and test the APIs
 * Started: November 2024
 
