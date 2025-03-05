@@ -5,6 +5,7 @@
 <a href="https://github.com/camaraproject/CapabilitiesAndRuntimeRestrictions" title="Repo Size"><img src="https://img.shields.io/github/repo-size/camaraproject/CapabilitiesAndRuntimeRestrictions?style=plastic"></a>
 <a href="https://github.com/camaraproject/CapabilitiesAndRuntimeRestrictions/blob/main/LICENSE" title="License"><img src="https://img.shields.io/badge/License-Apache%202.0-green.svg?style=plastic"></a>
 <a href="https://github.com/camaraproject/CapabilitiesAndRuntimeRestrictions/releases/latest" title="Latest Release"><img src="https://img.shields.io/github/release/camaraproject/CapabilitiesAndRuntimeRestrictions?style=plastic"></a>
+<a href="https://github.com/camaraproject/Governance/blob/main/ProjectStructureAndRoles.md" title="Sandbox API Repository"><img src="https://img.shields.io/badge/Sandbox%20API%20Repository-yellow?style=plastic"></a>
 
 # CapabilitiesAndRuntimeRestrictions
 Sandbox Repository to describe, develop, document, and test the Capabilities And Runtime Restrictions API(s).
@@ -12,8 +13,8 @@ Sandbox Repository to describe, develop, document, and test the Capabilities And
 ## Scope
 
 * Service APIs for “CapabilitiesAndRuntimeRestrictions” (see APIBacklog.md)
-* The CAMARA Runtime Restrictions API allows developers to understand and adapt to environment-specific differences in how CAMARA APIs are implemented. It provides details on what is supported, what is temporarily unavailable, and any other limitations that might affect how you call and consume those APIs.  This API provides that information about other CAMARA APIs.
-* The API provides the customer with the ability to:  
+* The CAMARA Runtime Restrictions API allows API consumers to understand and adapt to environment-specific differences in how CAMARA APIs are implemented. It provides details on what is supported, what is temporarily unavailable, and any other limitations that might affect how you call and consume those APIs. This API provides that information about other CAMARA APIs.
+* The API provides the API consumer with the ability to:  
   * Discover Capabilities and Constraints
   * Stay updated on changes
   * Adapt your requests Automatically
