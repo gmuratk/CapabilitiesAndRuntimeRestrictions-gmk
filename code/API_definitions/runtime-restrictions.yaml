@@ -173,7 +173,7 @@ externalDocs:
 security:
   - oAuth2ClientCredentials: []
 servers:
-  - url: "{apiRoot}/runtime-restrictions/v0"
+  - url: "{apiRoot}/runtime-restrictions/vwip"
     variables:
       apiRoot:
         default: http://localhost:9091
