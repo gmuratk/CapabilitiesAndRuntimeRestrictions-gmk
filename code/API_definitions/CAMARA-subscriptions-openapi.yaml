@@ -1,40 +1,40 @@
 openapi: 3.0.3
 info:
   title: Extended CloudEvents Subscriptions API for CAMARA
-  description: | 
+  description: |
     Common Extended CloudEvents Subscriptions for CAMARA APIs
 
     ## FAQ
     **How does CAMARA extended CloudEvents push work**
 
-    1. **Subscription creation**  
+    1. **Subscription creation**
        Consumer sends `POST /subscriptions` including:
-       - `protocol: HTTP`  
-       - `sink`: the webhook URL  
-       - `types`: event filters  
-       - `config.subscriptionStartTime`: optional timestamp (ISO 8601) to include past events  
-       - (optional) `config.cacheResyncRequest`: `true` to request current state resync  
-       - (optional) `config.eventResyncRequest`: `true` + `config.eventResyncTime` to request historical backlog  
+       - `protocol: HTTP`
+       - `sink`: the webhook URL
+       - `types`: event filters
+       - `config.subscriptionStartTime`: optional timestamp (ISO 8601) to include past events
+       - (optional) `config.cacheResyncRequest`: `true` to request current state resync
+       - (optional) `config.eventResyncRequest`: `true` + `config.eventResyncTime` to request historical backlog
        • Server responds **201 Created** with subscription metadata.
 
-    2. **Cache state delivery** *(if `cacheResyncRequest=true`)*  
+    2. **Cache state delivery** *(if `cacheResyncRequest=true`)*
        Immediately pushes snapshot of **current state event** of subscribed event 'type'. This snapshot reflects the relevant latest known state of the 'type' of the subscription.
-       Each CloudEvent has `data.syncStatus = "CACHE_RESYNCING"`.  
+       Each CloudEvent has `data.syncStatus = "CACHE_RESYNCING"`.
        After the final cache event, one event is sent with `data.syncStatus = "CACHE_RESYNC_COMPLETED"`.
 
-    3. **Historical events delivery** *(if `eventResyncRequest=true`)*  
-       Pushes **all past events** whose `time` ≥ `config.eventResyncTime`.  
-       Events are sent in batches (up to `config.eventBatchSize` each).  
-       Each CloudEvent has `data.syncStatus = "EVENT_RESYNCING"`.  
+    3. **Historical events delivery** *(if `eventResyncRequest=true`)*
+       Pushes **all past events** whose `time` ≥ `config.eventResyncTime`.
+       Events are sent in batches (up to `config.eventBatchSize` each).
+       Each CloudEvent has `data.syncStatus = "EVENT_RESYNCING"`.
        After the final backlog event, one event is sent with `data.syncStatus = "EVENT_RESYNC_COMPLETED"`.
 
-    4. **Live event streaming**  
-       Once backlog (if any) is done, new events stream in real time.  
+    4. **Live event streaming**
+       Once backlog (if any) is done, new events stream in real time.
        These events omit `syncStatus` or set it to `"ACTIVE"` to indicate live.
 
-    5. **Retries & acknowledgements**  
-       - **Provider retries**: non-2xx or network failures trigger exponential-backoff retries.  
-       - **Idempotency**: each CloudEvent `id` is unique; consumers must dedupe.  
+    5. **Retries & acknowledgements**
+       - **Provider retries**: non-2xx or network failures trigger exponential-backoff retries.
+       - **Idempotency**: each CloudEvent `id` is unique; consumers must dedupe.
        - **Acknowledgement**: HTTP 2xx confirms receipt; failures trigger retries.
 
   license:
@@ -63,7 +63,7 @@ paths:
       description: Create a subscription for receiving notifications on the common CAMARA CloudEvents.
       operationId: createCamaraCloudEventsSubscription
       parameters:
-        - $ref: "#/components/parameters/x-correlator"  
+        - $ref: "#/components/parameters/x-correlator"
       security:
         - openId:
             - camara-cloudevents-subscriptions:org.camaraproject.camara-cloudevents-subscriptions.v0.common:create
@@ -88,9 +88,9 @@ paths:
                 required: true
                 content:
                   application/cloudevents-batch+json:
-                    schema:          
+                    schema:
                       type: array
-                      items:          
+                      items:
                         $ref: "#/components/schemas/CamaraExtendedCloudEventsAttribute"
               responses:
                 "204":
@@ -112,10 +112,10 @@ paths:
                 - notificationsBearerAuth: []
       responses:
         "201":
-          description: Created (Successful creation of subscription) 
+          description: Created (Successful creation of subscription)
           headers:
             x-correlator:
-              $ref: "#/components/headers/x-correlator"                  
+              $ref: "#/components/headers/x-correlator"
           content:
             application/json:
               schema:
@@ -175,15 +175,15 @@ paths:
 
     options:
       tags:
-        - CAMARA Extended CloudEvents Common Subscription    
+        - CAMARA Extended CloudEvents Common Subscription
       operationId: getCamaraCloudEventsFeatures
       summary: getFeatures
       description: Discover supported features and methods for this endpoint
       parameters:
-        - $ref: "#/components/parameters/x-correlator"        
+        - $ref: "#/components/parameters/x-correlator"
       security:
         - openId:
-            - camara-cloudevents-subscriptions:read      
+            - camara-cloudevents-subscriptions:read
       responses:
         "200":
           description: OK
@@ -193,9 +193,9 @@ paths:
                 type: string
                 default: "GET,POST,OPTIONS"
             x-correlator:
-              $ref: "#/components/headers/x-correlator"                
+              $ref: "#/components/headers/x-correlator"
         "400":
-          $ref: "#/components/responses/Generic400"   
+          $ref: "#/components/responses/Generic400"
 
   /subscriptions/{id}:
     get:
@@ -208,23 +208,23 @@ paths:
         - openId:
             - camara-cloudevents-subscriptions:read
       parameters:
-        - $ref: "#/components/parameters/x-correlator"      
+        - $ref: "#/components/parameters/x-correlator"
         - $ref: "#/components/parameters/SubscriptionId"
         - $ref: "#/components/parameters/If-None-Match"
-        - $ref: "#/components/parameters/If-Modified-Since"        
+        - $ref: "#/components/parameters/If-Modified-Since"
       responses:
         "200":
           description: |
-            Subscription metadata. 
+            Subscription metadata.
           headers:
             x-correlator:
               $ref: "#/components/headers/x-correlator"
             ETag:
-              $ref: '#/components/headers/ETag'          
+              $ref: '#/components/headers/ETag'
             Cache-Control:
-              $ref: '#/components/headers/Cache-Control'  
+              $ref: '#/components/headers/Cache-Control'
             Last-Modified:
-              $ref: '#/components/headers/Last-Modified'                 
+              $ref: '#/components/headers/Last-Modified'
           content:
             application/json:
               schema:
@@ -242,15 +242,15 @@ paths:
 
     put:
       tags:
-        - CAMARA Extended CloudEvents Common Subscription    
+        - CAMARA Extended CloudEvents Common Subscription
       operationId: updateCamaraCloudEventsSubscription
       summary: updateCamaraCloudEventsSubscription
       description: Update a CAMARA CloudEvents subscription
       security:
         - openId:
-            - camara-cloudevents-subscriptions:update      
+            - camara-cloudevents-subscriptions:update
       parameters:
-        - $ref: "#/components/parameters/SubscriptionId"      
+        - $ref: "#/components/parameters/SubscriptionId"
         - $ref: "#/components/parameters/x-correlator"
       requestBody:
         required: true
@@ -308,15 +308,15 @@ paths:
 
     options:
       tags:
-        - CAMARA Extended CloudEvents Common Subscription    
+        - CAMARA Extended CloudEvents Common Subscription
       operationId: getCamaraCloudEventsSubscriptionFeatures
       summary: getSubscriptionFeatures
       description: Discover supported features and methods for this endpoint
       security:
         - openId:
-            - camara-cloudevents-subscriptions:read      
+            - camara-cloudevents-subscriptions:read
       parameters:
-        - $ref: "#/components/parameters/SubscriptionId"      
+        - $ref: "#/components/parameters/SubscriptionId"
         - $ref: "#/components/parameters/x-correlator"
       responses:
         "200":
@@ -327,9 +327,9 @@ paths:
                 type: string
                 default: "GET,PUT,DELETE,OPTIONS"
             x-correlator:
-              $ref: "#/components/headers/x-correlator"                   
+              $ref: "#/components/headers/x-correlator"
         "400":
-          $ref: "#/components/responses/Generic400" 
+          $ref: "#/components/responses/Generic400"
 
 components:
   securitySchemes:
@@ -337,7 +337,7 @@ components:
       $ref: 'CAMARA_common.yaml#/components/securitySchemes/openId'
     notificationsBearerAuth:
       $ref: 'CAMARA_common.yaml#/components/securitySchemes/notificationsBearerAuth'
-      
+
   parameters:
     SubscriptionId:
       name: id
@@ -345,35 +345,35 @@ components:
       description: Subscription identifier that was obtained from the create event subscription operation.
       required: true
       schema:
-        $ref: "#/components/schemas/SubscriptionId"       
+        $ref: "#/components/schemas/SubscriptionId"
     x-correlator:
       $ref: 'CAMARA_common.yaml#/components/parameters/x-correlator'
     If-None-Match:
-      $ref: 'CAMARA_common.yaml#/components/parameters/If-None-Match' 
+      $ref: 'CAMARA_common.yaml#/components/parameters/If-None-Match'
     If-Modified-Since:
-      $ref: 'CAMARA_common.yaml#/components/parameters/If-Modified-Since'  
+      $ref: 'CAMARA_common.yaml#/components/parameters/If-Modified-Since'
 
   headers:
     x-correlator:
       $ref: 'CAMARA_common.yaml#/components/headers/x-correlator'
     Cache-Control:
-      $ref: 'CAMARA_common.yaml#/components/headers/Cache-Control'     
+      $ref: 'CAMARA_common.yaml#/components/headers/Cache-Control'
     ETag:
-      $ref: 'CAMARA_common.yaml#/components/headers/ETag'      
+      $ref: 'CAMARA_common.yaml#/components/headers/ETag'
     Last-Modified:
-      $ref: 'CAMARA_common.yaml#/components/headers/Last-Modified' 
-      
+      $ref: 'CAMARA_common.yaml#/components/headers/Last-Modified'
+
   schemas:
     ErrorInfo:
       $ref: 'CAMARA_common.yaml#/components/schemas/ErrorInfo'
 
     SubscriptionId:
       type: string
-      description: | 
-        The unique identifier of the subscription in the scope of the subscription manager. When this information is contained 
-        within an event notification, this concept SHALL be referred as `subscriptionId` as per [Commonalities Event Notification 
+      description: |
+        The unique identifier of the subscription in the scope of the subscription manager. When this information is contained
+        within an event notification, this concept SHALL be referred as `subscriptionId` as per [Commonalities Event Notification
         Model](https://github.com/camaraproject/Commonalities/blob/main/documentation/API-design-guidelines.md#122-event-notification).
-      example: qs15-h556-rt89-1298  
+      example: qs15-h556-rt89-1298
 
     SubscriptionAsync:
       description: Response for an event-type subscription request managed asynchronously (Creation or Deletion).
@@ -385,7 +385,7 @@ components:
     CamaraExtendedSubscriptionRequest:
       type: object
       additionalProperties: false
-      description: | 
+      description: |
         Extended subscription request with enhanced config options.
       allOf:
         - $ref: 'subscriptions-openapi.yaml#/components/schemas/SubscriptionRequest'
@@ -429,7 +429,7 @@ components:
           type: string
           format: date-time
           example: "2023-01-17T13:18:23.682Z"
-          description: The subscription start time (in date-time format) requested by the API consumer.          
+          description: The subscription start time (in date-time format) requested by the API consumer.
         subscriptionExpireTime:
           type: string
           format: date-time
@@ -449,28 +449,28 @@ components:
             Identifies the maximum number of event reports to be generated (>=1) ina a batch requested by the API consumer - Once this number is reached for current batch, the events emit to the 'sink'.
             Batching: Events are pushed in batches of up to config.eventBatchSize.
           minimum: 1
-          example: 5                
+          example: 5
         cacheResyncRequest:
           type: boolean
           description: |
-            Set to `true` by API consumer if consumer wants to get cached state as soon as the subscription is created. 
+            Set to `true` by API consumer if consumer wants to get cached state as soon as the subscription is created.
             A cache resync isn't a request for historical event data. It only restores the current cache state.
 
-            Treat a cache resync request as if 'initialEvent' = 'true' and 'subscriptionStartTime' is now. 'eventResyncTime' value, if provided, is ignored by cache resync operation. 
+            Treat a cache resync request as if 'initialEvent' = 'true' and 'subscriptionStartTime' is now. 'eventResyncTime' value, if provided, is ignored by cache resync operation.
         eventResyncTime:
           type: string
           format: date-time
           example: "2023-01-17T13:18:23.682Z"
-          description: The event resync start time (in date-time format) requested by the API consumer.                 
+          description: The event resync start time (in date-time format) requested by the API consumer.
         eventResyncRequest:
           type: boolean
           description: |
             Set to `true` by API consumer if consumer wants to get historical events as soon as the subscription is created.
             Treat the event resync request as if 'initialEvent' = 'true' and use the provided 'eventResyncTime' in place of 'subscriptionStartTime'.
 
-            Event resync becomes truly historical only if the system retains every event and can replay them all. 
+            Event resync becomes truly historical only if the system retains every event and can replay them all.
             In practice, we should treat event resync as a “best effort” operation, dependent on what the implementation can actually provide.
-            Not every API needs or should offer a batching/resync capability.         
+            Not every API needs or should offer a batching/resync capability.
         initialEvent:
           type: boolean
           description: |
@@ -483,11 +483,11 @@ components:
           description: Date when the event subscription will begin/began. This attribute must not be present in the POST request as it is provided by API server. It must be present in GET endpoints.
         expiresAt:
           type: string
-          readOnly: true          
+          readOnly: true
           format: date-time
-          description: | 
+          description: |
             Date when the event subscription will expire. Only provided when `subscriptionExpireTime` is indicated by API client or Telco Operator has a specific policy about that.
-            This attribute must not be present in the POST request as it is provided (optionally) by API server. 
+            This attribute must not be present in the POST request as it is provided (optionally) by API server.
             This attribute must be provided by the server if subscriptionExpireTime is provided in the request and server is not able to handle it.
         status:
           type: string
@@ -496,9 +496,9 @@ components:
             Current status of the subscription - Management of Subscription State engine is not mandatory for now. Note not all statuses may be considered to be implemented. Details:
               - `ACTIVATION_REQUESTED`: Subscription creation (POST) is triggered but subscription creation process is not finished yet.
               - `CACHE_RESYNCING`: current cache state restore in progress.
-              - `CACHE_RESYNC_COMPLETED`: current cache state restored.   
+              - `CACHE_RESYNC_COMPLETED`: current cache state restored.
               - `EVENT_RESYNCING`: historical events replay in progress.
-              - `EVENT_RESYNC_COMPLETED`: historical events replay completed.                                        
+              - `EVENT_RESYNC_COMPLETED`: historical events replay completed.
               - `ACTIVE`: Subscription creation process is completed. Subscription is fully operative.
               - `INACTIVE`: Subscription is temporarily inactive, but its workflow logic is not deleted.
               - `EXPIRED`: Subscription is ended (no longer active). This status applies when subscription is ended due to `SUBSCRIPTION_EXPIRED` or `ACCESS_TOKEN_EXPIRED` event.
@@ -506,13 +506,13 @@ components:
           enum:
             - ACTIVATION_REQUESTED
             - CACHE_RESYNCING
-            - CACHE_RESYNC_COMPLETED           
+            - CACHE_RESYNC_COMPLETED
             - EVENT_RESYNCING
-            - EVENT_RESYNC_COMPLETED  
+            - EVENT_RESYNC_COMPLETED
             - ACTIVE
             - EXPIRED
             - INACTIVE
-            - DELETED            
+            - DELETED
 
     SubscriptionDetail:
       type: object
@@ -520,7 +520,7 @@ components:
 
     CamaraExtendedCloudEventsAttribute:
       type: object
-      description: | 
+      description: |
         Extended CloudEvents defined attributes for CAMARA.
         'https://raw.githubusercontent.com/cloudevents/spec/main/subscriptions/subscriptions-openapi.yaml#/components/schemas/CloudEventsAttribute'
         Required properties are as follows:
@@ -543,7 +543,7 @@ components:
             - source
             - specversion
             - type
-            - time          
+            - time
             - data
       discriminator:
         propertyName: "type"
@@ -557,15 +557,15 @@ components:
           type: string
           enum:
             - CACHE_RESYNCING
-            - CACHE_RESYNC_COMPLETED           
+            - CACHE_RESYNC_COMPLETED
             - EVENT_RESYNCING
-            - EVENT_RESYNC_COMPLETED              
+            - EVENT_RESYNC_COMPLETED
           description: |
             Optional. If present, indicates the subscription's sync phase:
-            • `CACHE_RESYNCING`: current cache state restore in progress. 
-            • `CACHE_RESYNC_COMPLETED`: current cache state restored.  
+            • `CACHE_RESYNCING`: current cache state restore in progress.
+            • `CACHE_RESYNC_COMPLETED`: current cache state restored.
             • `EVENT_RESYNCING`: historical events replay in progress.
-            • `EVENT_RESYNC_COMPLETED`: historical events replay completed.            
+            • `EVENT_RESYNC_COMPLETED`: historical events replay completed.
 
     TerminationReason:
       type: string
@@ -582,7 +582,7 @@ components:
         - ACCESS_TOKEN_EXPIRED
         - SUBSCRIPTION_DELETED
 
-  responses:               
+  responses:
     Generic400:
       $ref: "CAMARA_common.yaml#/components/responses/Generic400"
 
@@ -628,7 +628,7 @@ components:
               value:
                 status: 400
                 code: INVALID_TOKEN
-                message: Only bearer token is supported.    
+                message: Only bearer token is supported.
 
     SubscriptionIdRequired400:
       description: Problem with the client request
@@ -661,7 +661,7 @@ components:
               value:
                 status: 400
                 code: INVALID_ARGUMENT
-                message: "Expected property is missing: subscriptionId"    
+                message: "Expected property is missing: subscriptionId"
 
     Generic401:
       $ref: "CAMARA_common.yaml#/components/responses/Generic401"
@@ -699,7 +699,7 @@ components:
               value:
                 status: 403
                 code: SUBSCRIPTION_MISMATCH
-                message: Inconsistent access token for requested events subscription.      
+                message: Inconsistent access token for requested events subscription.
 
     Generic404:
       $ref: "CAMARA_common.yaml#/components/responses/Generic404"
@@ -785,7 +785,7 @@ components:
               value:
                 status: 422
                 code: GEOFENCING_SUBSCRIPTIONS.INVALID_AREA
-                message: "The requested area is too small"                                                
+                message: "The requested area is too small"
 
     Generic429:
       $ref: "CAMARA_common.yaml#/components/responses/Generic429"
