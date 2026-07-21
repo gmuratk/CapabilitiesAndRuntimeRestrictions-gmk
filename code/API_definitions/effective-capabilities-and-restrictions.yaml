@@ -1,40 +1,67 @@
 openapi: 3.0.3
 info:
-  title: Effective Capabilities and Restrictions
+  title: Effective Capabilities and Restrictions 1.1.0-v3
   description: |
     The Effective Capabilities and Restrictions API lets an API Consumer
-    discover, before invocation, the producer-specific restrictions that apply
-    to one or more released CAMARA APIs in the context of a specific end-user
-    device. The producer returns, per requested CAMARA API, a standard
-    OpenAPI Overlay document — pinned to version
-    [**Overlay 1.1.0**](https://spec.openapis.org/overlay/v1.1.0.html)
-    — that the consumer can apply locally to the corresponding CAMARA API
-    specification to obtain a strictly-valid view of the API for that
-    device-context.
+    discover, before invocation, the effective capability set that a producer
+    supports for one or more released CAMARA APIs — either as static,
+    producer-wide constraints or as runtime constraints derived from a specific
+    end-user device context.
 
-    This file is the Overlay-1.1.0-targeted sibling of
-    `effective-capabilities-and-restrictions.yaml`, which targets Overlay
-    1.0.0. The two variants are kept side-by-side so that consuming
-    deployments can pick the Overlay version they support; they are NOT
-    compatible on the wire (returned overlay documents carry different
-    `overlay` version strings and the 1.1.0 variant forbids the `copy`
-    action introduced upstream — see "Restriction-only semantics" below).
+    ## Definitions
 
-    Note on Overlay versioning: this API targets the Overlay Specification
-    **version 1.1.0** specifically. Returned overlay documents will carry
-    `overlay: "1.1.0"` in their root field, and the schema referenced from
-    [`../modules/openapi-overlay-1.1.0.yaml`](../modules/openapi-overlay-1.1.0.yaml)
-    mirrors Overlay 1.1.0 exclusively. Consumers MUST NOT assume that
-    [`https://spec.openapis.org/overlay/latest.html`](https://spec.openapis.org/overlay/latest.html)
-    resolves to 1.1.0 — that URL follows the upstream release train and may
-    resolve to an Overlay version newer than 1.1.0. Adoption of a newer
-    Overlay version by this API would be a breaking change requiring a new
-    API version.
+    **Capability**: the set of features, operations, parameters, and value
+    ranges that the producer effectively supports for a given API and context.
+    Analogous to `supportedFeatures` in 3GPP TS 29.571 — where a feature is
+    considered supported if and only if it falls within the declared capability
+    set — the effective capability set here is derived by starting from the
+    full CAMARA API specification (representing the universe of possible
+    features) and subtracting the restrictions enumerated in the returned
+    overlay. An element of the CAMARA spec not referenced by any action in
+    the overlay is therefore within the producer's capability set and is
+    supported with its unmodified, CAMARA-defined semantics.
+
+    **Restriction**: a narrowing of the CAMARA API contract that explicitly
+    places a feature or value range *outside* the producer's capability set
+    for the given context. Analogous to a cleared bit in a `supportedFeatures`
+    bitmap, a restriction is a precise, positive signal of non-support —
+    not an inference. Restrictions fall into two categories:
+
+    - *Static* (producer-wide): apply regardless of which device is queried,
+      reflecting a deployment policy or network-wide capability boundary.
+      Analogous to network-level `supportedFeatures` declared by the serving
+      node independently of any individual UE.
+    - *Runtime* (device-context): additionally conditioned on a specific
+      end-user device's footprint, subscription tier, or current network
+      attachment. Analogous to per-UE `supportedFeatures` negotiated at
+      session or subscription establishment.
+
+    The overlay therefore functions as an **inverse capability declaration**:
+    rather than enumerating what the producer supports (as a `supportedFeatures`
+    bitmap would), it enumerates only the deviations from full support. This
+    inversion is intentional — most features are supported; only the exceptions
+    require enumeration, keeping the overlay compact. The effective capability
+    set is the complement: everything the CAMARA spec defines that the overlay
+    does not restrict.
+
+    The producer returns, per requested CAMARA API, a `RestrictiveOverlay`
+    document that the consumer applies locally to the corresponding CAMARA
+    API specification to obtain a strictly-valid, narrowed view representing
+    the producer's effective capability set for that context.
+
+    > **Note on Overlay versioning**: this API targets Overlay Specification
+    > **version 1.1.0**. Returned overlay documents carry `overlay: "1.1.0"`
+    > in their root field, enforced structurally by `RestrictiveOverlay`
+    > (see `components/schemas/RestrictiveOverlay`). Consumers MUST NOT assume
+    > that [`https://spec.openapis.org/overlay/latest.html`](https://spec.openapis.org/overlay/latest.html)
+    > resolves to 1.1.0 — that URL tracks the upstream release train. Adoption
+    > of a newer Overlay version would be a breaking change requiring a new API
+    > version.
 
     # Restriction-only semantics
 
     Producers MUST emit only restrictive `actions[]` in every overlay returned
-    or delivered by this API. An action is restrictive when it either:
+    by this API. An action is restrictive when it either:
 
     - sets `remove: true` to delete an existing node from the target document, or
     - sets `update: { ... }` whose top-level keys narrow the target node using
@@ -44,48 +71,57 @@ info:
       `uniqueItems: true` constraint, or a `required` array that adds
       previously-optional properties.
 
-    Overlay 1.1.0 adds an optional `copy` field to the Action Object whose
-    semantics (injecting a value drawn from elsewhere in the target document
-    into the node selected by `target`) are not intrinsically restrictive:
-    a `copy` can just as easily widen as narrow the contract, and validating
-    "did this copy actually narrow the target's schema?" requires comparing
-    the JSON Schema at the copy source against the JSON Schema at the
-    target — meaningfully more complex than the keyword-level check used for
-    `update`. To keep validation tractable, this API forbids `copy`
-    outright: producers MUST NOT emit any action that carries a `copy`
-    field, and consumers MUST reject any overlay containing such an action.
-    Restrictive intent for this API is fully expressible with `remove` and
-    `update`.
+    **Structural enforcement**: restriction-only semantics are enforced at the
+    schema level by the `RestrictiveAction` and `SchemaRestrictions` schemas,
+    not only by prose contract:
 
-    Precedence among the mutating fields follows Overlay 1.1.0 unchanged:
-    `remove: true` overrides both `update` and `copy`, and `update` and
-    `copy` are mutually exclusive on a single action. Combined with the
-    rule above, a well-formed restrictive action under this API carries
-    exactly one of `remove: true` or a narrowing `update: { ... }`, never
-    both, and never carries `copy`.
+    - `RestrictiveAction` uses `additionalProperties: false` to structurally
+      forbid the `copy` action introduced in Overlay 1.1.0. A well-formed
+      response document cannot carry `copy` — any such document fails schema
+      validation before reaching a consumer.
+    - The `update` field in `RestrictiveAction` is typed as a map whose values
+      must conform to `SchemaRestrictions`. The `SchemaRestrictions` vocabulary
+      is a closed set of narrowing-only keywords. Widening operations — adding
+      paths or operations, removing `required` entries, broadening enums —
+      have no representation in this vocabulary and therefore cannot appear in
+      a valid `update`.
+    - `remove` is constrained to `enum: [true]` — only structural removal is
+      expressible; `remove: false` (a no-op) is rejected.
+    - `oneOf: [required: [remove], required: [update]]` on `RestrictiveAction`
+      enforces that exactly one mutating field is present per action; an action
+      with both or neither fails validation.
+
+    Each `RestrictiveAction` MUST carry exactly one of `remove: true` or
+    `update`. Co-presence of both, or presence of neither, fails schema
+    validation (`oneOf` constraint on `RestrictiveAction`). Unlike raw
+    Overlay 1.1.0 — which allows co-presence and resolves it by precedence —
+    this API treats co-presence as a producer error, not a tie-break.
 
     Consumers MUST reject any overlay whose actions broaden the target
     document — for example, actions that add new operations, widen an `enum`,
     introduce new `oneOf` branches, raise a `maximum`, lower a `required`
     array, or otherwise relax the contract of the underlying CAMARA API.
 
-    **Capabilities are signaled by the absence of a restriction**: any element
-    of the target CAMARA API specification that is *not* referenced by an
-    `action.target` in the returned overlay is supported by the producer with
-    the unmodified semantics defined by that CAMARA API. The overlay therefore
-    enumerates only the producer-specific narrowings; consumers infer
-    capabilities from what the overlay leaves untouched.
-
     # Operation model
 
     The single operation `POST /retrieve-effective-overlay` accepts a list of
     CAMARA API specification URLs (released GitHub versions) and a `device`
-    context. It has two delivery modes selected by whether the request carries
-    a `sink`:
+    context. The returned overlay for each API reflects the **union of static
+    and runtime restrictions**: static restrictions are producer-wide and apply
+    regardless of the device supplied; runtime restrictions are additionally
+    conditioned on the device's footprint, subscription tier, or network
+    attachment. Consumers MUST NOT assume that all restrictions in a returned
+    overlay are device-specific — a restriction present regardless of which
+    device is queried is a static, producer-wide constraint on the capability
+    set.
+
+    The operation has two delivery modes selected by whether the request
+    carries a `sink`:
 
     - **Synchronous** (no `sink`/`sinkCredential`): the producer evaluates the
-      request and returns `200 OK` with an array of OpenAPI Overlay 1.1.0
-      documents, one per requested API, in the same order as the request's
+      request and returns `200 OK` with an array of `RestrictiveOverlay`
+      documents — valid Overlay 1.1.0 documents restricted to narrowing-only
+      actions — one per requested API, in the same order as the request's
       `apis[]`.
     - **Asynchronous (implicit subscription)** (`sink` and `sinkCredential`
       both present): the producer returns `202 Accepted` immediately with an
@@ -221,10 +257,10 @@ paths:
         listed in `apis[]`, in the context of the supplied `device`.
 
         - If neither `sink` nor `sinkCredential` is supplied, returns
-          `200 OK` synchronously with an array of
-          [OpenAPI Overlay 1.1.0](https://spec.openapis.org/overlay/v1.1.0.html)
-          documents, one per entry in `apis[]`, in the same order as the
-          request.
+          `200 OK` synchronously with an array of `RestrictiveOverlay`
+          documents — valid Overlay 1.1.0 documents restricted to
+          narrowing-only actions — one per entry in `apis[]`, in the same
+          order as the request.
         - If both `sink` and `sinkCredential` are supplied, returns
           `202 Accepted` with no overlays in the body (the response echoes
           only the registered `sink`) and the producer subsequently delivers
@@ -258,7 +294,8 @@ paths:
                 POSTs to this endpoint once per affected CAMARA API whenever
                 the effective overlay changes for the device-context of an
                 active asynchronous request. Each notification is a single
-                (non-batch) CloudEvent.
+                (non-batch) CloudEvent carrying a `RestrictiveOverlay` document
+                in its `data.overlay` field.
               operationId: postOverlayUpdated
               parameters:
                 - $ref: "../common/CAMARA_common.yaml#/components/parameters/x-correlator"
@@ -290,11 +327,13 @@ paths:
       responses:
         "200":
           description: |
-            Synchronous response. The body is an array of
-            [OpenAPI Overlay 1.1.0](https://spec.openapis.org/overlay/v1.1.0.html)
-            documents, one per entry in the request's `apis[]`, in the same
-            order. Returned only when the request omits both `sink` and
-            `sinkCredential`.
+            Synchronous response. The body is an array of `RestrictiveOverlay`
+            documents — valid [OpenAPI Overlay 1.1.0](https://spec.openapis.org/overlay/v1.1.0.html)
+            documents restricted to narrowing-only actions — one per entry in
+            the request's `apis[]`, in the same order. Each document carries
+            `overlay: "1.1.0"` in its root field, enforced by the
+            `RestrictiveOverlay` schema. Returned only when the request omits
+            both `sink` and `sinkCredential`.
           headers:
             x-correlator:
               $ref: "../common/CAMARA_common.yaml#/components/headers/x-correlator"
@@ -305,12 +344,12 @@ paths:
                 minItems: 1
                 maxItems: 20
                 description: |
-                  One [OpenAPI Overlay 1.1.0](https://spec.openapis.org/overlay/v1.1.0.html)
-                  document per requested CAMARA API, in the same order as the
-                  request's `apis[]`. Each document carries `overlay: "1.1.0"`
-                  in its root field.
+                  One `RestrictiveOverlay` document per requested CAMARA API,
+                  in the same order as the request's `apis[]`. Each document
+                  carries `overlay: "1.1.0"` and contains only narrowing-only
+                  actions enforced by the `RestrictiveAction` schema.
                 items:
-                  $ref: "../modules/openapi-overlay-1.1.0.yaml#/components/schemas/Overlay"
+                  $ref: "#/components/schemas/RestrictiveOverlay"
         "202":
           description: |
             Asynchronous acceptance. Returned only when both `sink` and
@@ -519,6 +558,162 @@ components:
           example: "https://consumer.example.com/effective-overlay/notifications"
 
     # ─────────────────────────────────────────────────────────────────────────
+    # SchemaRestrictions vocabulary — defined in shared module
+    #
+    # All SchemaRestriction* schemas live in the version-pinned module:
+    #   ../modules/schema-restrictions.yaml
+    #
+    # This API references only the root entry point (SchemaRestrictions) via
+    # RestrictiveAction.update.additionalProperties. The full vocabulary
+    # (SchemaRestriction, SchemaRestrictionAnnotation, SchemaRestrictionAnyInstance,
+    # SchemaRestrictionNumeric, SchemaRestrictionString, SchemaRestrictionArray,
+    # SchemaRestrictionObject, SchemaRestrictionParameter,
+    # SchemaRestrictionOperation, SchemaRestrictionInstancePresence) is defined and
+    # documented there. The bundled release artifact inlines all $refs, so
+    # consumers always receive a self-contained document.
+    #
+    # SchemaRestriction uses oneOf (not anyOf)
+    # and each subtype adds minProperties: 1, preventing empty-object matches.
+    # To adopt a newer vocabulary version, update the $ref below and bump
+    # this API's version field.
+    # ─────────────────────────────────────────────────────────────────────────
+
+    # ─────────────────────────────────────────────────────────────────────────
+    # Restrictive Overlay structure
+    #
+    # RestrictiveAction and RestrictiveOverlay define the wire format for
+    # overlay documents returned by this API. RestrictiveOverlay is a CAMARA
+    # profile of Overlay 1.1.0: it carries overlay: "1.1.0", extends, and
+    # actions, but is not executable by a stock Overlay processor because
+    # update values are typed through the SchemaRestrictions vocabulary
+    # defined in ../modules/schema-restrictions.yaml.
+    # ─────────────────────────────────────────────────────────────────────────
+
+    RestrictiveAction:
+      description: |
+        A CAMARA profile of an Overlay 1.1.0 Action Object, restricted to narrowing-only operations.
+
+        Structural constraints enforced by this schema:
+
+        - `additionalProperties: false` — structurally forbids the `copy` action
+          introduced in Overlay 1.1.0. Any overlay document carrying `copy` on an
+          action fails schema validation before reaching a consumer.
+        - `update` is typed as a map of `SchemaRestrictions` — a closed vocabulary
+          of narrowing-only keywords. Widening operations (adding paths, removing
+          required entries, broadening enums) have no representation in this
+          vocabulary and therefore cannot appear in a valid `update`.
+        - `remove` is constrained to `enum: [true]` — only structural removal is
+          expressible; `remove: false` (a no-op) is rejected.
+        - `oneOf: [required: [remove], required: [update]]` — exactly one
+          mutating field MUST be present per action; an action with both or
+          neither fails validation.
+      type: object
+      additionalProperties: false
+      required: [target]
+      properties:
+        target:
+          type: string
+          minLength: 1
+          maxLength: 2048
+          description: |
+            A JSONPath expression selecting one or more nodes in the target
+            OpenAPI document to which this action applies. MUST conform to the
+            JSONPath syntax defined by Overlay 1.1.0.
+          example: "$.components.schemas['Device'].properties['ipv4Address']"
+        remove:
+          type: boolean
+          enum: [true]
+          description: |
+            When present (and MUST be `true`), the selected node is removed
+            from the target document. Removing a node is always a narrowing
+            operation. `remove: false` is not permitted.
+        update:
+          type: object
+          description: |
+            A map of named restriction sets to apply to the selected node.
+            Every value MUST conform to `SchemaRestrictions`. Only narrowing
+            keywords are expressible — widening operations have no
+            representation in the `SchemaRestrictions` vocabulary.
+          minProperties: 1
+          additionalProperties:
+            $ref: "../modules/schema-restrictions.yaml#/components/schemas/SchemaRestrictions"
+      oneOf:
+        - required: [remove]
+        - required: [update]
+
+    RestrictiveOverlay:
+      description: |
+        A CAMARA profile of OpenAPI Overlay 1.1.0. Reuses the Overlay 1.1.0
+        document structure and JSONPath targeting — the `overlay` field is
+        pinned to `"1.1.0"`, `extends` identifies the target CAMARA API
+        specification, and `actions` lists the producer-specific narrowings in
+        application order — but is not executable by a stock Overlay 1.1.0
+        processor because `update` values are interpreted through the CAMARA
+        `SchemaRestrictions` vocabulary, which is outside the Overlay 1.1.0
+        specification.
+
+        Structural constraints:
+
+        - `additionalProperties: false` eliminates `copy` and any undocumented
+          Overlay fields from valid documents.
+        - `overlay: enum: ["1.1.0"]` — the version is pinned at the schema level,
+          preventing silent adoption of a newer Overlay version whose semantics
+          have not been reviewed for restriction-only compatibility.
+        - All `actions` items MUST conform to `RestrictiveAction`, which enforces
+          the closed `SchemaRestrictions` vocabulary on `update` and forbids `copy`
+          structurally.
+
+        Any element of the target CAMARA API specification not referenced by an
+        `action.target` is supported by the producer with unmodified semantics.
+        The overlay enumerates only producer-specific narrowings; consumers infer
+        capabilities from what the overlay leaves untouched.
+      type: object
+      required: [overlay, extends, actions]
+      additionalProperties: false
+      properties:
+        overlay:
+          type: string
+          enum: ["1.1.0"]
+          maxLength: 10
+          description: |
+            Overlay specification version. MUST be `"1.1.0"`. Pinned at the
+            schema level to prevent silent adoption of a newer Overlay version
+            whose semantics have not been reviewed for restriction-only
+            compatibility.
+        info:
+          type: object
+          description: Optional metadata about this overlay document.
+          additionalProperties: false
+          properties:
+            title:
+              type: string
+              maxLength: 256
+              description: Human-readable title of the overlay document.
+            version:
+              type: string
+              maxLength: 64
+              description: Version of this overlay document.
+        extends:
+          type: string
+          format: uri
+          maxLength: 2048
+          description: |
+            URL of the CAMARA API specification this overlay targets. Matches
+            one of the entries in the original request's `apis[]`.
+          example: "https://github.com/camaraproject/QualityOnDemand/blob/r2.2/code/API_definitions/quality-on-demand.yaml"
+        actions:
+          type: array
+          description: |
+            Ordered list of narrowing-only actions to apply to the target
+            document. Applied in order; later actions may reference nodes
+            modified by earlier actions. All items MUST conform to
+            `RestrictiveAction`.
+          minItems: 0
+          maxItems: 100
+          items:
+            $ref: "#/components/schemas/RestrictiveAction"
+
+    # ─────────────────────────────────────────────────────────────────────────
     # CloudEvent notification
     # ─────────────────────────────────────────────────────────────────────────
 
@@ -534,8 +729,8 @@ components:
       description: |
         Payload of an `overlay-updated` CloudEvent. Identifies the CAMARA API
         whose effective overlay has changed and carries the full replacement
-        overlay document. Consumers replace any prior overlay for `api` with
-        `overlay`.
+        `RestrictiveOverlay` document. Consumers replace any prior overlay for
+        `api` with `overlay`.
       type: object
       required:
         - api
@@ -551,19 +746,21 @@ components:
             `apis[]`.
           example: "https://github.com/camaraproject/QualityOnDemand/blob/r2.2/code/API_definitions/quality-on-demand.yaml"
         overlay:
-          $ref: "../modules/openapi-overlay-1.1.0.yaml#/components/schemas/Overlay"
+          $ref: "#/components/schemas/RestrictiveOverlay"
 
     OverlayUpdatedEvent:
       description: |
         CloudEvents 1.0 envelope for an `overlay-updated` notification. The
         `type` is constrained to the single value defined by this API and the
-        `data` payload carries the replacement overlay for one CAMARA API.
+        `data` payload carries the replacement `RestrictiveOverlay` for one
+        CAMARA API.
       allOf:
         - $ref: "../common/CAMARA_event_common.yaml#/components/schemas/CloudEvent"
         - type: object
           required:
             - type
             - data
+            - datacontenttype
           properties:
             type:
               $ref: "#/components/schemas/OverlayUpdatedEventType"
